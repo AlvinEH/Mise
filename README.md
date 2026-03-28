@@ -26,7 +26,7 @@ To use the AI-powered recipe extraction feature:
    - Click "Create API Key" 
    - Copy your API key
 
-2. **Add the API key to Glazy:**
+2. **Add the API key to Mise:**
    - Open the app and go to Settings
    - Find "API Configuration" section
    - Paste your API key and click "Save"

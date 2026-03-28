@@ -24,7 +24,7 @@ export const SettingsPage = ({
   setMode
 }: SettingsPageProps) => {
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
-  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('glazy-gemini-api-key') || '');
+  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('Mise-gemini-api-key') || '');
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiKeySaved, setApiKeySaved] = useState(false);
   
@@ -49,9 +49,9 @@ export const SettingsPage = ({
 
   const saveApiKey = () => {
     if (geminiApiKey.trim()) {
-      localStorage.setItem('glazy-gemini-api-key', geminiApiKey.trim());
+      localStorage.setItem('Mise-gemini-api-key', geminiApiKey.trim());
     } else {
-      localStorage.removeItem('glazy-gemini-api-key');
+      localStorage.removeItem('Mise-gemini-api-key');
     }
     setApiKeySaved(true);
     setTimeout(() => setApiKeySaved(false), 2000);

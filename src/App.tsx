@@ -281,14 +281,14 @@ function App() {
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('glazy-theme') as Theme) || 'm3');
-  const [mode, setMode] = useState<Mode>(() => (localStorage.getItem('glazy-mode') as Mode) || 'light');
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('Mise-theme') as Theme) || 'm3');
+  const [mode, setMode] = useState<Mode>(() => (localStorage.getItem('Mise-mode') as Mode) || 'light');
 
   useEffect(() => {
     const themeValue = theme === 'm3' ? (mode === 'light' ? '' : 'm3-dark') : `${theme}-${mode}`;
     document.documentElement.setAttribute('data-theme', themeValue);
-    localStorage.setItem('glazy-theme', theme);
-    localStorage.setItem('glazy-mode', mode);
+    localStorage.setItem('Mise-theme', theme);
+    localStorage.setItem('Mise-mode', mode);
   }, [theme, mode]);
 
   const navigate = useNavigate();
@@ -481,7 +481,7 @@ function App() {
           <div className="w-24 h-24 bg-m3-primary-container text-m3-on-primary-container rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-lg">
             <Zzz size={48} />
           </div>
-          <h1 className="text-5xl font-black text-m3-on-surface mb-4 tracking-tight">Glazy</h1>
+          <h1 className="text-5xl font-black text-m3-on-surface mb-4 tracking-tight">Mise</h1>
           <p className="text-m3-on-surface-variant mb-12 text-xl font-medium leading-relaxed">
             Clip recipes from any website instantly using AI. Save your favorites and search them anytime.
           </p>
@@ -524,7 +524,7 @@ function App() {
                       <div className="p-2 bg-m3-primary text-m3-on-primary rounded-xl shadow-sm">
                         <Zzz size={20} />
                       </div>
-                      <h1 className="text-xl font-black tracking-tight text-m3-on-surface">Glazy</h1>
+                      <h1 className="text-xl font-black tracking-tight text-m3-on-surface">Mise</h1>
                     </div>
                     <div className="hidden lg:block">
                       <h1 className="text-2xl font-black tracking-tight text-m3-on-surface">My Recipe Library</h1>

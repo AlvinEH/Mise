@@ -48,7 +48,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         className={`fixed top-0 left-0 h-full w-[85%] bg-m3-surface border-r border-m3-outline/10 z-[60] lg:static lg:w-80 flex flex-col`}
       >
         <div className="p-8 flex items-center gap-3 border-b border-m3-outline/5">
-          <h1 className="text-2xl font-black tracking-tight text-m3-on-surface">Glazy</h1>
+          <h1 className="text-2xl font-black tracking-tight text-m3-on-surface">Mise</h1>
         </div>
 
         <nav className="flex-1 p-6 space-y-2">

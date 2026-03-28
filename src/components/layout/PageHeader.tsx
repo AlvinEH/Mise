@@ -16,7 +16,7 @@ export const PageHeader = ({ title, onMenuClick }: PageHeaderProps) => (
           <Menu size={24} />
         </button>
         <div className="flex items-center gap-3 lg:hidden">
-          <h1 className="text-xl font-black tracking-tight text-m3-on-surface">Glazy</h1>
+          <h1 className="text-xl font-black tracking-tight text-m3-on-surface">Mise</h1>
         </div>
         <div className="hidden lg:block">
           <h1 className="text-2xl font-black tracking-tight text-m3-on-surface">{title}</h1>

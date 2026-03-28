@@ -36,7 +36,7 @@ export const ClipModal = ({
           onClick={e => e.stopPropagation()}
         >
           <div className="p-8 border-b border-m3-outline/10 flex justify-between items-center">
-            <h2 className="text-2xl font-black text-m3-on-surface">AI Glazy</h2>
+            <h2 className="text-2xl font-black text-m3-on-surface">AI Mise</h2>
             <button 
               onClick={onClose} 
               className="p-3 hover:bg-m3-surface-variant/50 text-m3-on-surface-variant rounded-full transition-colors"
