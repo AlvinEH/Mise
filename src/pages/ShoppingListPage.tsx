@@ -244,11 +244,18 @@ export const ShoppingListPage = ({ onMenuClick, user }: ShoppingListPageProps) =
           </AnimatePresence>
 
           {storeLists.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8">
-              {storeLists.map(list => (
-                <StoreCard 
-                  key={list.id} 
-                  list={list} 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-8">
+              {storeLists.map((list, index) => (
+                <motion.div
+                  key={list.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  whileTap={{ y: -8, scale: 0.98 }}
+                >
+                  <StoreCard 
+                    list={list} 
                   items={shoppingItems.filter(item => item.storeListId === list.id)}
                   onAddItem={(name) => handleAddItem(list.id, name)}
                   onToggleItem={handleToggleItem}
@@ -258,6 +265,7 @@ export const ShoppingListPage = ({ onMenuClick, user }: ShoppingListPageProps) =
                   onReorder={(newItems) => handleReorder(list.id, newItems)}
                   onExpand={() => handleExpand(list.id)}
                 />
+                </motion.div>
               ))}
             </div>
           ) : (

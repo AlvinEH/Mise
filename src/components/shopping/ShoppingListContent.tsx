@@ -90,7 +90,7 @@ export const ShoppingListContent = ({
         <form onSubmit={handleSubmit} className="relative">
           <input 
             type="text" 
-            placeholder="Add item (e.g. 'tomatoes x4', 'milk 1 gallon')..."
+            placeholder="Add item"
             value={newItemName}
             onChange={e => setNewItemName(e.target.value)}
             autoCapitalize="sentences"

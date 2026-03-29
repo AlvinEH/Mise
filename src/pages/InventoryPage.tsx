@@ -367,26 +367,33 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
           {/* Items Grid */}
           {filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredItems.map((item) => (
+              {filteredItems.map((item, index) => (
                 <motion.div
                   key={item.id}
                   layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  whileTap={{ y: -8, scale: 0.98 }}
                   className="bg-m3-surface border border-m3-outline/10 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-all group"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <h3 className="font-black text-lg text-m3-on-surface truncate flex-1 mr-2">
                       {item.name}
                     </h3>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => startEdit(item)}
-                        className="p-2 text-m3-on-surface-variant/40 hover:text-m3-primary rounded-lg"
+                        className="p-2 text-m3-on-surface-variant hover:text-m3-primary rounded-lg hover:bg-m3-primary/10 transition-colors"
+                        title="Edit item"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button
                         onClick={() => handleDelete(item)}
-                        className="p-2 text-m3-on-surface-variant/40 hover:text-red-600 rounded-lg"
+                        className="p-2 text-m3-on-surface-variant hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Delete item"
                       >
                         <Trash2 size={16} />
                       </button>

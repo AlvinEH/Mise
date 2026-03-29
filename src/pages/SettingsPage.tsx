@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
+import { motion } from 'motion/react';
 import { Palette, Sun, Moon, LogOut, ChevronDown, Key, Eye, EyeOff } from 'lucide-react';
 import { Theme, Mode } from '../types';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -66,7 +67,12 @@ export const SettingsPage = ({
         
         <div className="space-y-12">
           {/* Theme Selection */}
-          <section className="space-y-8">
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="space-y-8"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Palette className="text-m3-primary" size={28} />
@@ -119,10 +125,15 @@ export const SettingsPage = ({
                 )}
               </div>
             </div>
-          </section>
+          </motion.section>
 
           {/* API Configuration */}
-          <section className="space-y-8">
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="space-y-8"
+          >
             <div className="flex items-center gap-3">
               <Key className="text-m3-primary" size={28} />
               <h3 className="text-2xl font-black text-m3-on-surface">API Configuration</h3>
@@ -175,10 +186,15 @@ export const SettingsPage = ({
                 </div>
               )}
             </div>
-          </section>
+          </motion.section>
 
           {/* Account Information */}
-          <section className="bg-m3-surface-variant/10 rounded-[32px] p-8 border border-m3-outline/10">
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="bg-m3-surface-variant/10 rounded-[32px] p-8 border border-m3-outline/10"
+          >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-black text-m3-on-surface">Account Information</h3>
               <button
@@ -193,7 +209,7 @@ export const SettingsPage = ({
               <span className="text-2xl font-black text-m3-on-surface truncate">{user.displayName}</span>
               <span className="text-m3-on-surface-variant font-bold truncate">{user.email}</span>
             </div>
-          </section>
+          </motion.section>
         </div>
       </main>
     </div>

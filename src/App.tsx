@@ -71,6 +71,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ShoppingListPage } from './pages/ShoppingListPage';
 import { AddRecipePage } from './pages/AddRecipePage';
 import { InventoryPage } from './pages/InventoryPage';
+import { HomePage } from './pages/HomePage';
 
 // Import types and constants
 import { 
@@ -283,6 +284,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('Mise-theme') as Theme) || 'm3');
   const [mode, setMode] = useState<Mode>(() => (localStorage.getItem('Mise-mode') as Mode) || 'light');
+  const [isNavigatingToHome, setIsNavigatingToHome] = useState(false);
 
   useEffect(() => {
     const themeValue = theme === 'm3' ? (mode === 'light' ? '' : 'm3-dark') : `${theme}-${mode}`;
@@ -293,6 +295,11 @@ function App() {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Track navigation direction for exit animations
+  useEffect(() => {
+    setIsNavigatingToHome(location.pathname === '/');
+  }, [location.pathname]);
 
   const isRecipeDetailPage = location.pathname.startsWith('/recipe/');
 
@@ -507,9 +514,28 @@ function App() {
       )}
 
       <div className={`flex-1 flex flex-col ${isRecipeDetailPage ? 'min-h-screen' : 'h-screen overflow-hidden'} relative`}>
-        <Routes>
-          <Route path="/" element={
-            <>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={
+              <motion.div
+                key="home"
+                initial={{ y: '15%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '15%', opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              >
+                <HomePage onMenuClick={() => setIsSidebarOpen(true)} />
+              </motion.div>
+            } />
+          <Route path="/recipes" element={
+            <motion.div
+              key="recipes"
+              initial={{ y: '15%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '15%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="h-full flex flex-col"
+            >
               {/* Top App Bar */}
               <header className="sticky top-0 z-40 bg-m3-surface/80 backdrop-blur-md border-b border-m3-outline/10 px-4 py-4 lg:px-8">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -520,12 +546,9 @@ function App() {
                     >
                       <Menu size={24} />
                     </button>
-                    <div className="flex items-center gap-3 lg:hidden">
-                      <div className="p-2 bg-m3-primary text-m3-on-primary rounded-xl shadow-sm">
-                        <Zzz size={20} />
-                      </div>
+                    <Link to="/" className="flex items-center gap-3 lg:hidden hover:opacity-80 transition-opacity">
                       <h1 className="text-xl font-black tracking-tight text-m3-on-surface">Mise</h1>
-                    </div>
+                    </Link>
                     <div className="hidden lg:block">
                       <h1 className="text-2xl font-black tracking-tight text-m3-on-surface">My Recipe Library</h1>
                     </div>
@@ -630,25 +653,84 @@ function App() {
                   <Plus size={40} />
                 </button>
               </div>
-            </>
+            </motion.div>
           } />
-          <Route path="/recipe/:id" element={<RecipePage recipes={recipes} onEdit={startEdit} onDelete={setRecipeToDelete} />} />
-          <Route path="/add-recipe" element={<AddRecipePage user={user} onMenuClick={() => setIsSidebarOpen(true)} />} />
-          <Route path="/inventory" element={<InventoryPage onMenuClick={() => setIsSidebarOpen(true)} />} />
-          <Route path="/shopping-list" element={<ShoppingListPage onMenuClick={() => setIsSidebarOpen(true)} user={user} />} />
-          <Route path="/meal-planner" element={<MealPlannerPage onMenuClick={() => setIsSidebarOpen(true)} />} />
+          <Route path="/recipe/:id" element={
+            <motion.div
+              key="recipe-detail"
+              initial={{ y: '15%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '15%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            >
+              <RecipePage recipes={recipes} onEdit={startEdit} onDelete={setRecipeToDelete} />
+            </motion.div>
+          } />
+          <Route path="/add-recipe" element={
+            <motion.div
+              key="add-recipe"
+              initial={{ y: '15%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '15%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            >
+              <AddRecipePage user={user} onMenuClick={() => setIsSidebarOpen(true)} />
+            </motion.div>
+          } />
+          <Route path="/inventory" element={
+            <motion.div
+              key="inventory"
+              initial={{ y: '15%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '15%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            >
+              <InventoryPage onMenuClick={() => setIsSidebarOpen(true)} />
+            </motion.div>
+          } />
+          <Route path="/shopping-list" element={
+            <motion.div
+              key="shopping-list"
+              initial={{ y: '15%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '15%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            >
+              <ShoppingListPage onMenuClick={() => setIsSidebarOpen(true)} user={user} />
+            </motion.div>
+          } />
+          <Route path="/meal-planner" element={
+            <motion.div
+              key="meal-planner"
+              initial={{ y: '15%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '15%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            >
+              <MealPlannerPage onMenuClick={() => setIsSidebarOpen(true)} />
+            </motion.div>
+          } />
           <Route path="/settings" element={
-            <SettingsPage 
-              onMenuClick={() => setIsSidebarOpen(true)} 
-              user={user} 
-              onLogout={logOut} 
-              theme={theme}
-              setTheme={setTheme}
-              mode={mode}
-              setMode={setMode}
-            />
+            <motion.div
+              key="settings"
+              initial={{ y: '15%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '15%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            >
+              <SettingsPage 
+                onMenuClick={() => setIsSidebarOpen(true)} 
+                user={user} 
+                onLogout={logOut} 
+                theme={theme}
+                setTheme={setTheme}
+                mode={mode}
+                setMode={setMode}
+              />
+            </motion.div>
           } />
         </Routes>
+        </AnimatePresence>
       </div>
 
       {/* Delete Confirmation Modal */}

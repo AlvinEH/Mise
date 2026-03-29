@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingCart, Calendar, Settings, BookOpen, Package } from 'lucide-react';
+import { ShoppingCart, Calendar, Settings, BookOpen, Package, Home } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,11 +19,11 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   }, []);
 
   const menuItems = [
+    { icon: Home, label: 'Home', path: '/' },
     { icon: Calendar, label: 'Meal Planner', path: '/meal-planner' },
     { icon: ShoppingCart, label: 'Shopping List', path: '/shopping-list' },
     { icon: Package, label: 'Inventory', path: '/inventory' },
-    { icon: BookOpen, label: 'Recipes', path: '/' },
-    { icon: Settings, label: 'Settings', path: '/settings' },
+    { icon: BookOpen, label: 'Recipes', path: '/recipes' },
   ];
 
   return (
@@ -45,20 +45,38 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         initial={false}
         animate={{ x: (isOpen || isDesktop) ? 0 : '-100%' }}
         transition={{ type: 'tween', duration: 0.2, ease: 'easeOut' }}
-        className={`fixed top-0 left-0 h-full w-[85%] bg-m3-surface border-r border-m3-outline/10 z-[60] lg:static lg:w-80 flex flex-col`}
+        className={`fixed top-0 left-0 h-full w-[70%] bg-m3-surface border-r border-m3-outline/10 z-[60] lg:static lg:w-56 flex flex-col`}
       >
-        <div className="p-8 flex items-center gap-3 border-b border-m3-outline/5">
-          <h1 className="text-2xl font-black tracking-tight text-m3-on-surface">Mise</h1>
+        <div className="p-6 flex items-center justify-between border-b border-m3-outline/5">
+          <NavLink 
+            to="/"
+            onClick={() => onClose()}
+            className="text-2xl font-black tracking-tight text-m3-on-surface hover:text-m3-primary transition-colors"
+          >
+            Mise
+          </NavLink>
+          <NavLink
+            to="/settings"
+            onClick={() => onClose()}
+            className={({ isActive }) => `
+              p-2 rounded-full transition-all
+              ${isActive 
+                ? 'bg-m3-primary-container text-m3-on-primary-container' 
+                : 'text-m3-on-surface-variant hover:bg-m3-surface-variant/30 hover:text-m3-on-surface'}
+            `}
+          >
+            <Settings size={20} />
+          </NavLink>
         </div>
 
-        <nav className="flex-1 p-6 space-y-2">
+        <nav className="flex-1 p-4 space-y-2">
           {menuItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               onClick={() => onClose()}
               className={({ isActive }) => `
-                flex items-center gap-4 px-6 py-4 rounded-[20px] font-bold transition-all
+                flex items-center gap-3 px-4 py-3 rounded-[20px] font-bold transition-all
                 ${isActive 
                   ? 'bg-m3-primary-container text-m3-on-primary-container shadow-sm' 
                   : 'text-m3-on-surface-variant hover:bg-m3-surface-variant/30 hover:text-m3-on-surface'}

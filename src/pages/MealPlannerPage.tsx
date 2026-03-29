@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Edit2, Trash2, UtensilsCrossed, Calendar as CalendarIcon } from 'lucide-react';
-import { format, addDays, subDays, isSameDay, startOfDay } from 'date-fns';
+import { Plus, UtensilsCrossed, Calendar as CalendarIcon, Trash2, X } from 'lucide-react';
+import { format, addDays, subDays, isSameDay, startOfDay, isBefore, getDay } from 'date-fns';
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../firebase';
@@ -21,15 +21,75 @@ interface DayMeals {
 export const MealPlannerPage = ({ onMenuClick }: MealPlannerPageProps) => {
   const [user] = useAuthState(auth);
   const [meals, setMeals] = useState<MealEntry[]>([]);
-  const [isAddingMeal, setIsAddingMeal] = useState<{ date: string; type: 'lunch' | 'dinner' } | null>(null);
-  const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
-  const [newMealName, setNewMealName] = useState('');
-  const [newMealNotes, setNewMealNotes] = useState('');
+  const [editingDay, setEditingDay] = useState<{ date: string; lunch?: MealEntry; dinner?: MealEntry } | null>(null);
+  const [lunchMealName, setLunchMealName] = useState('');
+  const [dinnerMealName, setDinnerMealName] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
+  // Calculate next Friday
+  const getNextFriday = () => {
+    const today = new Date();
+    const dayOfWeek = getDay(today); // 0=Sunday, 1=Monday, ..., 5=Friday, 6=Saturday
+    const daysUntilFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 7 - dayOfWeek + 5;
+    return addDays(startOfDay(today), daysUntilFriday);
+  };
+
+  const [dateRange, setDateRange] = useState(() => {
+    const today = startOfDay(new Date());
+    const nextFriday = getNextFriday();
+    
+    // Show 3 weeks: 1 week before + current week + next week
+    return {
+      start: subDays(today, 14),
+      end: addDays(nextFriday, 7)
+    };
+  });
   const todayRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(false);
 
-  // Generate 30 days (7 days ago to 23 days ahead) for a good scrolling range
-  const days = Array.from({ length: 30 }, (_, i) => addDays(subDays(startOfDay(new Date()), 7), i));
+  // Infinite scroll for seamless content loading
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (isLoadingRef.current) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      
+      // Load more past dates when scrolling near top (within 300px)
+      if (scrollTop < 300) {
+        isLoadingRef.current = true;
+        setDateRange(prev => ({
+          ...prev,
+          start: subDays(prev.start, 7)
+        }));
+        setTimeout(() => { isLoadingRef.current = false; }, 500);
+      }
+      
+      // Load more future dates when scrolling near bottom (within 300px)
+      if (scrollTop + clientHeight > scrollHeight - 300) {
+        isLoadingRef.current = true;
+        setDateRange(prev => ({
+          ...prev,
+          end: addDays(prev.end, 7)
+        }));
+        setTimeout(() => { isLoadingRef.current = false; }, 500);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Generate days from current range
+  const days = [];
+  let currentDate = dateRange.start;
+  while (currentDate <= dateRange.end) {
+    days.push(new Date(currentDate));
+    currentDate = addDays(currentDate, 1);
+  }
 
   // Group meals by date
   const mealsByDate = meals.reduce((acc, meal) => {
@@ -43,8 +103,8 @@ export const MealPlannerPage = ({ onMenuClick }: MealPlannerPageProps) => {
   useEffect(() => {
     if (!user) return;
 
-    const rangeStart = format(days[0], 'yyyy-MM-dd');
-    const rangeEnd = format(days[days.length - 1], 'yyyy-MM-dd');
+    const rangeStart = format(dateRange.start, 'yyyy-MM-dd');
+    const rangeEnd = format(dateRange.end, 'yyyy-MM-dd');
 
     const q = query(
       collection(db, 'mealEntries'),
@@ -66,105 +126,180 @@ export const MealPlannerPage = ({ onMenuClick }: MealPlannerPageProps) => {
     });
 
     return unsubscribe;
-  }, [user]);
+  }, [user, dateRange]);
 
   // Scroll to today on initial load and when meals are loaded
   useEffect(() => {
-    if (todayRef.current) {
-      todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (todayRef.current && meals.length > 0) {
+      // Small delay to ensure layout is complete
+      setTimeout(() => {
+        if (todayRef.current) {
+          todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 200);
     }
   }, [meals.length > 0]); 
 
-  const handleAddMeal = async (e: React.FormEvent) => {
+  // Always scroll to today when component mounts (page entry)
+  useEffect(() => {
+    const scrollToTodayOnMount = () => {
+      if (todayRef.current) {
+        todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+    
+    // Small delay to ensure DOM is fully rendered
+    const timer = setTimeout(scrollToTodayOnMount, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+
+
+  const handleEditDay = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMealName.trim() || !isAddingMeal || !user) return;
+    if (!editingDay || !user) return;
 
     try {
-      const mealData: any = {
-        userId: user.uid,
-        date: isAddingMeal.date,
-        type: isAddingMeal.type,
-        recipeName: newMealName.trim(),
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      };
-
-      if (newMealNotes.trim()) {
-        mealData.notes = newMealNotes.trim();
+      const promises = [];
+      
+      // Handle lunch
+      if (lunchMealName.trim()) {
+        const lunchData: any = {
+          userId: user.uid,
+          date: editingDay.date,
+          type: 'lunch',
+          recipeName: lunchMealName.trim(),
+          updatedAt: Timestamp.now()
+        };
+        
+        if (editingDay.lunch) {
+          // Update existing lunch
+          promises.push(updateDoc(doc(db, 'mealEntries', editingDay.lunch.id), lunchData));
+        } else {
+          // Create new lunch
+          lunchData.createdAt = Timestamp.now();
+          promises.push(addDoc(collection(db, 'mealEntries'), lunchData));
+        }
+      } else if (editingDay.lunch) {
+        // Delete lunch if name is empty
+        promises.push(deleteDoc(doc(db, 'mealEntries', editingDay.lunch.id)));
       }
-
-      await addDoc(collection(db, 'mealEntries'), mealData);
-      setNewMealName('');
-      setNewMealNotes('');
-      setIsAddingMeal(null);
+      
+      // Handle dinner
+      if (dinnerMealName.trim()) {
+        const dinnerData: any = {
+          userId: user.uid,
+          date: editingDay.date,
+          type: 'dinner',
+          recipeName: dinnerMealName.trim(),
+          updatedAt: Timestamp.now()
+        };
+        
+        if (editingDay.dinner) {
+          // Update existing dinner
+          promises.push(updateDoc(doc(db, 'mealEntries', editingDay.dinner.id), dinnerData));
+        } else {
+          // Create new dinner
+          dinnerData.createdAt = Timestamp.now();
+          promises.push(addDoc(collection(db, 'mealEntries'), dinnerData));
+        }
+      } else if (editingDay.dinner) {
+        // Delete dinner if name is empty
+        promises.push(deleteDoc(doc(db, 'mealEntries', editingDay.dinner.id)));
+      }
+      
+      await Promise.all(promises);
+      setLunchMealName('');
+      setDinnerMealName('');
+      setEditingDay(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'mealEntries');
+      handleFirestoreError(error, OperationType.UPDATE, 'mealEntries/day-edit');
     }
   };
 
-  const handleEditMeal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMealName.trim() || !editingMeal) return;
 
-    try {
-      const updateData: any = {
-        recipeName: newMealName.trim(),
-        updatedAt: Timestamp.now()
-      };
 
-      if (newMealNotes.trim()) {
-        updateData.notes = newMealNotes.trim();
-      } else {
-        updateData.notes = null;
-      }
 
-      await updateDoc(doc(db, 'mealEntries', editingMeal.id), updateData);
-      setNewMealName('');
-      setNewMealNotes('');
-      setEditingMeal(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'mealEntries/' + editingMeal.id);
-    }
+
+  const startEditingDay = (date: string, dayMeals: { lunch?: MealEntry; dinner?: MealEntry }) => {
+    setEditingDay({ date, lunch: dayMeals.lunch, dinner: dayMeals.dinner });
+    setLunchMealName(dayMeals.lunch?.recipeName || '');
+    setDinnerMealName(dayMeals.dinner?.recipeName || '');
   };
 
-  const handleDeleteMeal = async (meal: MealEntry) => {
-    if (!window.confirm(`Delete ${meal.recipeName || 'this meal'}?`)) return;
+  const handleDeleteDay = async () => {
+    if (!editingDay || !user) return;
+    
+    if (!editingDay.lunch && !editingDay.dinner) {
+      cancelEdit();
+      return;
+    }
     
     try {
-      await deleteDoc(doc(db, 'mealEntries', meal.id));
+      const promises = [];
+      if (editingDay.lunch) {
+        promises.push(deleteDoc(doc(db, 'mealEntries', editingDay.lunch.id)));
+      }
+      if (editingDay.dinner) {
+        promises.push(deleteDoc(doc(db, 'mealEntries', editingDay.dinner.id)));
+      }
+      
+      await Promise.all(promises);
+      cancelEdit();
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, 'mealEntries/' + meal.id);
+      handleFirestoreError(error, OperationType.DELETE, 'mealEntries/day-delete');
     }
-  };
-
-  const startAddingMeal = (date: string, type: 'lunch' | 'dinner') => {
-    setIsAddingMeal({ date, type });
-    setNewMealName('');
-    setNewMealNotes('');
-  };
-
-  const startEditingMeal = (meal: MealEntry) => {
-    setEditingMeal(meal);
-    setNewMealName(meal.recipeName || '');
-    setNewMealNotes(meal.notes || '');
   };
 
   const cancelEdit = () => {
-    setIsAddingMeal(null);
-    setEditingMeal(null);
-    setNewMealName('');
-    setNewMealNotes('');
+    setEditingDay(null);
+    setLunchMealName('');
+    setDinnerMealName('');
   };
 
   const scrollToToday = () => {
-    todayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    todayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+
+
+  const goToToday = () => {
+    scrollToToday();
+  };
+
+
+
+  const handleDatePicker = () => {
+    setShowDatePicker(true);
+    setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+  };
+
+  const goToSelectedDate = () => {
+    if (!selectedDate) return;
+    const targetDate = new Date(selectedDate);
+    
+    // Extend date range if needed to include the selected date
+    setDateRange(prev => ({
+      start: targetDate < prev.start ? subDays(targetDate, 7) : prev.start,
+      end: targetDate > prev.end ? addDays(targetDate, 7) : prev.end
+    }));
+    
+    setShowDatePicker(false);
+    
+    // Scroll to the date after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const dateElement = document.querySelector(`[data-date="${format(targetDate, 'yyyy-MM-dd')}"]`);
+      if (dateElement) {
+        dateElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
   };
 
   if (!user) {
     return (
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <PageHeader title="Meal Planner" onMenuClick={onMenuClick} />
-        <main className="flex-1 flex items-center justify-center p-8">
+        <main className="flex-1 flex items-center justify-start p-8">
           <div className="text-center">
             <UtensilsCrossed size={64} className="mx-auto mb-6 text-m3-on-surface-variant/30" />
             <p className="text-xl font-bold text-m3-on-surface-variant">Please sign in to plan your meals</p>
@@ -179,205 +314,137 @@ export const MealPlannerPage = ({ onMenuClick }: MealPlannerPageProps) => {
       <PageHeader title="Meal Planner" onMenuClick={onMenuClick} />
       
       <main className="flex-1 overflow-hidden flex flex-col">
-        {/* Agenda Header */}
-        <div className="px-6 py-6 flex items-center justify-between bg-m3-surface z-10">
-          <div>
-            <h1 className="text-3xl font-semibold text-m3-on-surface tracking-tight">
-              Agenda
-            </h1>
-            <p className="text-sm text-m3-on-surface-variant">
-              Your weekly meal schedule
-            </p>
+        {/* Page Header */}
+        <div className="px-6 pt-1 pb-0 bg-m3-surface">
+          <div className="max-w-7xl mx-auto">
+            <div>
+              <h2 className="text-4xl font-black text-m3-on-surface tracking-tight mb-0">Meal Planner</h2>
+            </div>
           </div>
-          <button 
-            onClick={scrollToToday}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-m3-primary text-m3-on-primary font-medium text-sm hover:shadow-md transition-all active:scale-95"
-          >
-            <CalendarIcon size={18} />
-            Today
-          </button>
+        </div>
+        
+        {/* Navigation Controls */}
+        <div className="px-6 py-4 bg-m3-surface z-10 border-b border-m3-outline-variant/20">
+          <div className="flex items-center justify-end gap-3">
+            <button 
+              onClick={handleDatePicker}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-m3-surface-container text-m3-on-surface font-medium text-sm hover:shadow-md transition-all active:scale-95"
+            >
+              <CalendarIcon size={18} className="text-m3-primary" />
+              Pick Date
+            </button>
+            <button 
+              onClick={goToToday}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-m3-primary text-m3-on-primary font-medium text-sm hover:shadow-md transition-all active:scale-95"
+            >
+              <CalendarIcon size={18} className="text-m3-on-primary" />
+              Today
+            </button>
+          </div>
         </div>
 
         {/* Scrolling Agenda View */}
         <div 
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto scroll-smooth"
+          className="flex-1 overflow-y-auto scroll-smooth scrollbar-none"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <div className="max-w-4xl mx-auto py-6 md:py-12 px-4 md:px-6">
             <div className="space-y-3 md:space-y-4">
-              {days.map((date) => {
+              {days.map((date, index) => {
                 const dateString = format(date, 'yyyy-MM-dd');
                 const dayMeals = mealsByDate[dateString] || {};
                 const isToday = isSameDay(date, new Date());
+                const isPast = isBefore(date, startOfDay(new Date()));
+                const hasNoMeals = !dayMeals.lunch && !dayMeals.dinner;
+                const shouldCompact = isPast && hasNoMeals;
                 
                 return (
-                  <div 
+                  <motion.div
                     key={dateString}
-                    ref={isToday ? todayRef : null}
-                    className={`group relative grid grid-cols-[48px_1fr] md:grid-cols-[80px_1fr] gap-3 md:gap-6 p-3 md:p-6 rounded-[28px] transition-all duration-300 ${
-                      isToday 
-                        ? 'bg-m3-primary-container text-m3-on-primary-container shadow-sm' 
-                        : 'bg-m3-surface-container-low border border-m3-outline-variant/30 hover:bg-m3-surface-container'
-                    }`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.05 }}
+                    whileHover={!shouldCompact ? { y: -2, scale: 1.01 } : {}}
+                    whileTap={!shouldCompact ? { y: -4, scale: 0.99 } : {}}
                   >
+                    <div 
+                      ref={isToday ? todayRef : null}
+                      data-date={dateString}
+                      onClick={() => !shouldCompact && startEditingDay(dateString, dayMeals)}
+                      className={`group relative grid grid-cols-[48px_1fr] md:grid-cols-[80px_1fr] rounded-[28px] transition-all duration-300 overflow-hidden cursor-pointer ${
+                        isToday 
+                          ? 'bg-m3-primary-container text-m3-on-primary-container shadow-sm' 
+                          : 'bg-m3-surface-container-low border border-m3-outline-variant/30 hover:bg-m3-surface-container'
+                      }`}
+                    >
                     {/* Date Column */}
-                    <div className="flex flex-col items-center justify-center text-center border-r border-m3-outline-variant/50 pr-3 md:pr-6">
-                      <span className={`text-[10px] md:text-xs font-medium mb-1 ${
-                        isToday ? 'text-m3-on-primary-container/70' : 'text-m3-on-surface-variant'
-                      }`}>
+                    <div className={`flex flex-col items-center justify-center text-center p-3 md:p-6 ${
+                      isToday ? 'bg-m3-primary/10' : 'bg-m3-surface-variant/30'
+                    }`}>
+                      <span className={`text-[10px] md:text-xs font-medium mb-1 text-m3-on-primary-container/70`}>
                         {format(date, 'EEE')}
                       </span>
-                      <span className="text-xl md:text-3xl font-bold tracking-tight leading-none">
+                      <span className={`text-xl md:text-3xl font-bold tracking-tight leading-none text-m3-on-primary-container`}>
                         {format(date, 'd')}
                       </span>
-                      <span className={`text-[10px] md:text-xs font-medium mt-1 ${
-                        isToday ? 'text-m3-on-primary-container/70' : 'text-m3-on-surface-variant'
-                      }`}>
+                      <span className={`text-[10px] md:text-xs font-medium mt-1 text-m3-on-primary-container/70`}>
                         {format(date, 'MMM')}
                       </span>
                     </div>
 
                     {/* Meals Column */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    {shouldCompact ? (
+                      <div className="flex items-center justify-center p-2 md:p-3">
+                        <span className="text-xs text-m3-on-surface-variant/30 italic">No meals planned</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 p-3 md:p-6">
                       {/* Lunch Slot */}
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs font-semibold tracking-wide ${
-                            isToday ? 'text-m3-on-primary-container/60' : 'text-m3-on-surface-variant/70'
-                          }`}>LUNCH</span>
-                          {!dayMeals.lunch && (
-                            <button
-                              onClick={() => startAddingMeal(dateString, 'lunch')}
-                              className={`p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 ${
-                                isToday ? 'hover:bg-m3-on-primary-container/10 text-m3-on-primary-container' : 'hover:bg-m3-primary/10 text-m3-primary'
-                              }`}
-                            >
-                              <Plus size={18} />
-                            </button>
-                          )}
+                          <span className={`text-[10px] font-semibold tracking-wide text-m3-on-primary-container/60`}>LUNCH</span>
                         </div>
                         
                         {dayMeals.lunch ? (
-                          <div className={`relative p-4 rounded-2xl transition-all group/item ${
-                            isToday ? 'bg-m3-on-primary-container/5 hover:bg-m3-on-primary-container/10' : 'bg-m3-surface-container-high hover:bg-m3-surface-container-highest'
-                          }`}>
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <h4 className="font-semibold text-lg leading-tight mb-0.5 truncate">
-                                  {dayMeals.lunch.recipeName}
-                                </h4>
-                                {dayMeals.lunch.notes && (
-                                  <p className={`text-sm line-clamp-1 ${
-                                    isToday ? 'text-m3-on-primary-container/70' : 'text-m3-on-surface-variant'
-                                  }`}>
-                                    {dayMeals.lunch.notes}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => startEditingMeal(dayMeals.lunch!)}
-                                  className={`p-2 rounded-full transition-all ${
-                                    isToday ? 'hover:bg-m3-on-primary-container/10 text-m3-on-primary-container' : 'hover:bg-m3-primary/10 text-m3-primary'
-                                  }`}
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteMeal(dayMeals.lunch!)}
-                                  className={`p-2 rounded-full transition-all ${
-                                    isToday ? 'hover:bg-m3-error-container/20 text-m3-error' : 'hover:bg-m3-error/10 text-m3-error'
-                                  }`}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
+                          <div className={`relative p-1 rounded-xl text-m3-on-primary-container`}>
+                            <div className="min-w-0">
+                              <h4 className="font-semibold text-sm leading-tight mb-0.5 truncate">
+                                {dayMeals.lunch.recipeName}
+                              </h4>
                             </div>
                           </div>
                         ) : (
-                          <button 
-                            onClick={() => startAddingMeal(dateString, 'lunch')}
-                            className={`w-full py-3 border border-m3-outline-variant/50 border-dashed rounded-2xl text-xs font-medium transition-all ${
-                              isToday 
-                                ? 'text-m3-on-primary-container/40 hover:bg-m3-on-primary-container/5 hover:border-m3-on-primary-container/30' 
-                                : 'text-m3-on-surface-variant/40 hover:bg-m3-primary/5 hover:border-m3-primary/30 hover:text-m3-primary'
-                            }`}
-                          >
-                            Plan Lunch
-                          </button>
+                          <div className={`w-full py-2 text-[10px] font-medium italic transition-all text-m3-on-primary-container/40 ${isPast ? 'opacity-50' : ''}`}>
+                            No lunch planned
+                          </div>
                         )}
                       </div>
 
                       {/* Dinner Slot */}
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs font-semibold tracking-wide ${
-                            isToday ? 'text-m3-on-primary-container/60' : 'text-m3-on-surface-variant/70'
-                          }`}>DINNER</span>
-                          {!dayMeals.dinner && (
-                            <button
-                              onClick={() => startAddingMeal(dateString, 'dinner')}
-                              className={`p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 ${
-                                isToday ? 'hover:bg-m3-on-primary-container/10 text-m3-on-primary-container' : 'hover:bg-m3-primary/10 text-m3-primary'
-                              }`}
-                            >
-                              <Plus size={18} />
-                            </button>
-                          )}
+                          <span className={`text-[10px] font-semibold tracking-wide text-m3-on-primary-container/60`}>DINNER</span>
                         </div>
                         
                         {dayMeals.dinner ? (
-                          <div className={`relative p-4 rounded-2xl transition-all group/item ${
-                            isToday ? 'bg-m3-on-primary-container/5 hover:bg-m3-on-primary-container/10' : 'bg-m3-surface-container-high hover:bg-m3-surface-container-highest'
-                          }`}>
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <h4 className="font-semibold text-lg leading-tight mb-0.5 truncate">
-                                  {dayMeals.dinner.recipeName}
-                                </h4>
-                                {dayMeals.dinner.notes && (
-                                  <p className={`text-sm line-clamp-1 ${
-                                    isToday ? 'text-m3-on-primary-container/70' : 'text-m3-on-surface-variant'
-                                  }`}>
-                                    {dayMeals.dinner.notes}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => startEditingMeal(dayMeals.dinner!)}
-                                  className={`p-2 rounded-full transition-all ${
-                                    isToday ? 'hover:bg-m3-on-primary-container/10 text-m3-on-primary-container' : 'hover:bg-m3-primary/10 text-m3-primary'
-                                  }`}
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteMeal(dayMeals.dinner!)}
-                                  className={`p-2 rounded-full transition-all ${
-                                    isToday ? 'hover:bg-m3-error-container/20 text-m3-error' : 'hover:bg-m3-error/10 text-m3-error'
-                                  }`}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
+                          <div className={`relative p-1 rounded-xl text-m3-on-primary-container`}>
+                            <div className="min-w-0">
+                              <h4 className="font-semibold text-sm leading-tight mb-0.5 truncate">
+                                {dayMeals.dinner.recipeName}
+                              </h4>
                             </div>
                           </div>
                         ) : (
-                          <button 
-                            onClick={() => startAddingMeal(dateString, 'dinner')}
-                            className={`w-full py-3 border border-m3-outline-variant/50 border-dashed rounded-2xl text-xs font-medium transition-all ${
-                              isToday 
-                                ? 'text-m3-on-primary-container/40 hover:bg-m3-on-primary-container/5 hover:border-m3-on-primary-container/30' 
-                                : 'text-m3-on-surface-variant/40 hover:bg-m3-primary/5 hover:border-m3-primary/30 hover:text-m3-primary'
-                            }`}
-                          >
-                            Plan Dinner
-                          </button>
+                          <div className={`w-full py-2 text-[10px] font-medium italic transition-all text-m3-on-primary-container/40 ${isPast ? 'opacity-50' : ''}`}>
+                            No dinner planned
+                          </div>
                         )}
                       </div>
                     </div>
+                    )}
                   </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -387,7 +454,81 @@ export const MealPlannerPage = ({ onMenuClick }: MealPlannerPageProps) => {
 
       {/* Add/Edit Meal Modal */}
       <AnimatePresence>
-        {(isAddingMeal || editingMeal) && (
+        {showDatePicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-m3-surface/80 backdrop-blur-xl flex items-center justify-center p-4 z-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowDatePicker(false);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-m3-surface-container-high rounded-[28px] p-6 md:p-8 w-full max-w-sm shadow-xl border border-m3-outline-variant/20"
+            >
+              <div className="mb-6">
+                <h3 className="text-2xl font-semibold text-m3-on-surface tracking-tight">
+                  Go to Date
+                </h3>
+                <style dangerouslySetInnerHTML={{
+                  __html: `
+                    input[type="date"]::-webkit-calendar-picker-indicator {
+                      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23006d3b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3e%3c/rect%3e%3cline x1='16' y1='2' x2='16' y2='6'%3e%3c/line%3e%3cline x1='8' y1='2' x2='8' y2='6'%3e%3c/line%3e%3cline x1='3' y1='10' x2='21' y2='10'%3e%3c/line%3e%3c/svg%3e");
+                      background-size: 18px;
+                      opacity: 0.8;
+                      cursor: pointer;
+                    }
+                    input[type="date"]::-webkit-calendar-picker-indicator:hover {
+                      opacity: 1;
+                    }
+                    @media (prefers-color-scheme: dark) {
+                      input[type="date"]::-webkit-calendar-picker-indicator {
+                        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237dd99a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3e%3c/rect%3e%3cline x1='16' y1='2' x2='16' y2='6'%3e%3c/line%3e%3cline x1='8' y1='2' x2='8' y2='6'%3e%3c/line%3e%3cline x1='3' y1='10' x2='21' y2='10'%3e%3c/line%3e%3c/svg%3e");
+                      }
+                    }
+                  `
+                }} />
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-m3-on-surface-variant mb-2 ml-1">
+                    Select Date
+                  </label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={e => setSelectedDate(e.target.value)}
+                    style={{ colorScheme: 'light dark' }}
+                    className="w-full px-4 py-3 bg-m3-surface-container text-m3-on-surface rounded-2xl outline-none border-2 border-m3-outline-variant/30 focus:border-m3-primary/50 transition-all font-medium"
+                  />
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowDatePicker(false)}
+                    className="flex-1 px-6 py-2.5 rounded-full font-medium text-sm text-m3-primary hover:bg-m3-primary/5 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={goToSelectedDate}
+                    className="flex-1 px-6 py-2.5 bg-m3-primary text-m3-on-primary rounded-full font-medium text-sm shadow-sm hover:shadow-md transition-all active:scale-95"
+                  >
+                    Go to Date
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+        
+        {editingDay && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -405,61 +546,89 @@ export const MealPlannerPage = ({ onMenuClick }: MealPlannerPageProps) => {
             >
               <div className="mb-6">
                 <h3 className="text-2xl font-semibold text-m3-on-surface tracking-tight">
-                  {editingMeal ? 'Edit Meal' : `Add ${isAddingMeal?.type}`}
+                  {format(new Date(editingDay.date), 'EEEE, MMM d')}
                 </h3>
-                <p className="text-sm text-m3-on-surface-variant mt-1">
-                  {editingMeal ? 'Update your meal details' : 'Plan what to eat for this slot'}
-                </p>
               </div>
               
-              <form onSubmit={editingMeal ? handleEditMeal : handleAddMeal} className="space-y-4">
+              <form onSubmit={handleEditDay} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-m3-on-surface-variant mb-2 ml-1">
-                    Meal Name
+                    Lunch
                   </label>
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="e.g. Grilled Salmon with Asparagus"
-                    value={newMealName}
-                    onChange={e => setNewMealName(e.target.value)}
-                    className="w-full px-4 py-3 bg-m3-surface-container rounded-2xl outline-none border-2 border-transparent focus:border-m3-primary/50 transition-all font-medium"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={lunchMealName}
+                      onChange={e => setLunchMealName(e.target.value)}
+                      className="w-full px-4 py-3 pr-12 bg-m3-surface-container rounded-2xl outline-none border-2 border-m3-outline-variant/30 focus:border-m3-primary/50 transition-all font-medium leading-tight capitalize md:normal-case"
+                    />
+                    {lunchMealName && (
+                      <button
+                        type="button"
+                        onClick={() => setLunchMealName('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-m3-on-surface-variant/60 hover:text-m3-on-surface hover:bg-m3-surface-variant/20 transition-all"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-m3-on-surface-variant mb-2 ml-1">
-                    Notes
+                    Dinner
                   </label>
-                  <textarea
-                    placeholder="Add any details or ingredients..."
-                    value={newMealNotes}
-                    onChange={e => setNewMealNotes(e.target.value)}
-                    className="w-full px-4 py-3 bg-m3-surface-container rounded-2xl outline-none border-2 border-transparent focus:border-m3-primary/50 transition-all font-medium resize-none"
-                    rows={3}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={dinnerMealName}
+                      onChange={e => setDinnerMealName(e.target.value)}
+                      className="w-full px-4 py-3 pr-12 bg-m3-surface-container rounded-2xl outline-none border-2 border-m3-outline-variant/30 focus:border-m3-primary/50 transition-all font-medium leading-tight capitalize md:normal-case"
+                    />
+                    {dinnerMealName && (
+                      <button
+                        type="button"
+                        onClick={() => setDinnerMealName('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-m3-on-surface-variant/60 hover:text-m3-on-surface hover:bg-m3-surface-variant/20 transition-all"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex gap-3 pt-4">
+                  {(editingDay.lunch || editingDay.dinner) && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteDay}
+                      className="px-4 py-2.5 rounded-full font-medium text-sm text-m3-error hover:bg-m3-error/5 transition-all flex items-center gap-2"
+                    >
+                      <Trash2 size={16} />
+                      Delete
+                    </button>
+                  )}
+                  <div className="flex-1" />
                   <button
                     type="button"
                     onClick={cancelEdit}
-                    className="flex-1 px-6 py-2.5 rounded-full font-medium text-sm text-m3-primary hover:bg-m3-primary/5 transition-all"
+                    className="px-6 py-2.5 rounded-full font-medium text-sm text-m3-primary hover:bg-m3-primary/5 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-2.5 bg-m3-primary text-m3-on-primary rounded-full font-medium text-sm shadow-sm hover:shadow-md transition-all active:scale-95"
+                    className="px-6 py-2.5 bg-m3-primary text-m3-on-primary rounded-full font-medium text-sm shadow-sm hover:shadow-md transition-all active:scale-95"
                   >
-                    {editingMeal ? 'Save' : 'Add to Plan'}
+                    Save Day
                   </button>
                 </div>
               </form>
             </motion.div>
           </motion.div>
         )}
+        
+
       </AnimatePresence>
     </div>
   );
