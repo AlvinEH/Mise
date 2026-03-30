@@ -37,16 +37,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-4">
-          <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md text-center">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="min-h-screen flex items-center justify-center bg-m3-surface p-4">
+          <div className="bg-m3-surface-container p-8 rounded-3xl shadow-xl max-w-md text-center">
+            <div className="w-16 h-16 bg-m3-error-container text-m3-on-error-container rounded-full flex items-center justify-center mx-auto mb-4">
               <X size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-zinc-900 mb-2">Application Error</h2>
-            <p className="text-zinc-500 mb-6">{message}</p>
+            <h2 className="text-2xl font-bold text-m3-on-surface mb-2">Application Error</h2>
+            <p className="text-m3-on-surface-variant mb-6">{message}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-zinc-900 text-white rounded-xl font-semibold hover:bg-zinc-800 transition-colors"
+              className="px-6 py-2 bg-m3-primary text-m3-on-primary rounded-xl font-semibold hover:bg-m3-primary/90 transition-colors"
             >
               Reload App
             </button>

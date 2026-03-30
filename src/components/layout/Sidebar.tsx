@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingCart, Calendar, Settings, BookOpen, Package, Home } from 'lucide-react';
@@ -8,7 +8,7 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
+export const Sidebar = memo(({ isOpen, onClose }: SidebarProps) => {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
 
   useEffect(() => {
@@ -90,4 +90,4 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       </motion.aside>
     </>
   );
-};
+});

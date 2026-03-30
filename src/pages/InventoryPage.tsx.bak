@@ -33,7 +33,6 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [formData, setFormData] = useState({
@@ -237,19 +236,10 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [expandedLocation]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isLocationDropdownOpen && !(event.target as Element).closest('.location-dropdown')) {
-        setIsLocationDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isLocationDropdownOpen]);
-
   // Handle smart input parsing on blur or Enter key
   const handleSmartInputParse = () => {
+    if (activeTab !== 'ingredients') return; // Only parse for ingredients
+    
     const value = smartInput.trim();
     if (value) {
       const parsed = parseShoppingItem(value);
@@ -358,15 +348,16 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
           {activeTab === 'ingredients' ? (
             /* Location-based cards for ingredients */
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {locationOptions.ingredients
-                .filter(location => {
-                  const matchesLocationFilter = locationFilter === 'all' || location === locationFilter;
-                  const locationItems = filteredItems.filter(item => item.location === location);
-                  const hasMatchingItems = searchQuery === '' || locationItems.length > 0;
-                  return matchesLocationFilter && hasMatchingItems;
-                })
-                .map((location) => {
+              {locationOptions.ingredients.map((location) => {
                 const locationItems = filteredItems.filter(item => item.location === location);
+                const getLocationIcon = (loc: string) => {
+                  switch (loc) {
+                    case 'Refrigerator': return '🧊';
+                    case 'Freezer': return '❄️';
+                    case 'Pantry': return '🏠';
+                    default: return '📦';
+                  }
+                };
                 
                 return (
                   <motion.div
@@ -381,9 +372,10 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                         className="flex items-center gap-3 cursor-pointer flex-1 hover:bg-m3-surface-variant/10 -m-2 p-2 rounded-xl transition-colors"
                         onClick={() => toggleCardCollapsed(location)}
                       >
+                        <span className="text-2xl">{getLocationIcon(location)}</span>
                         <div>
                           <h3 className="text-xl font-black text-m3-on-surface">{location}</h3>
-                          <span className="text-[10px] font-bold text-m3-on-surface-variant/60 uppercase tracking-wider mt-[-2px]">
+                          <span className="text-[10px] font-bold text-m3-on-surface-variant/60 uppercase tracking-wider">
                             {locationItems.length} items
                           </span>
                         </div>
@@ -466,6 +458,9 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                               </>
                             ) : (
                               <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+                                <div className="w-16 h-16 bg-m3-surface-variant/20 text-m3-on-surface-variant/30 rounded-full flex items-center justify-center mb-4">
+                                  <Apple size={24} />
+                                </div>
                                 <p className="text-m3-on-surface-variant/60 text-sm font-medium">
                                   No ingredients in {location.toLowerCase()}
                                 </p>
@@ -493,15 +488,23 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
           ) : (
             /* Location-based cards for supplies */
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {locationOptions.supplies
-                .filter(location => {
-                  const matchesLocationFilter = locationFilter === 'all' || location === locationFilter;
-                  const locationItems = filteredItems.filter(item => item.location === location);
-                  const hasMatchingItems = searchQuery === '' || locationItems.length > 0;
-                  return matchesLocationFilter && hasMatchingItems;
-                })
-                .map((location) => {
+              {locationOptions.supplies.map((location) => {
                 const locationItems = filteredItems.filter(item => item.location === location);
+                const getLocationIcon = (loc: string) => {
+                  switch (loc) {
+                    case 'Pantry': return '🏠';
+                    case 'Closet': return '📦';
+                    case 'Washroom': return '🚿';
+                    default: return '📦';
+                  }
+                };
+                    case 'Closet': return '�';
+                    case 'Washroom': return '🚿';
+                    default: return '📦'; '�';
+                    case 'Washroom': return '🚿';
+                    default: return '📦';
+                  }
+                };
                 
                 return (
                   <motion.div
@@ -516,9 +519,10 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                         className="flex items-center gap-3 cursor-pointer flex-1 hover:bg-m3-surface-variant/10 -m-2 p-2 rounded-xl transition-colors"
                         onClick={() => toggleCardCollapsed(location)}
                       >
+                        <span className="text-2xl">{getLocationIcon(location)}</span>
                         <div>
                           <h3 className="text-xl font-black text-m3-on-surface">{location}</h3>
-                          <span className="text-[10px] font-bold text-m3-on-surface-variant/60 uppercase tracking-wider mt-[-2px]">
+                          <span className="text-[10px] font-bold text-m3-on-surface-variant/60 uppercase tracking-wider">
                             {locationItems.length} items
                           </span>
                         </div>
@@ -601,6 +605,9 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                               </>
                             ) : (
                               <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+                                <div className="w-16 h-16 bg-m3-surface-variant/20 text-m3-on-surface-variant/30 rounded-full flex items-center justify-center mb-4">
+                                  <Package size={24} />
+                                </div>
                                 <p className="text-m3-on-surface-variant/60 text-sm font-medium">
                                   No supplies in {location.toLowerCase()}
                                 </p>
@@ -634,7 +641,7 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-[110]"
+                className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50"
                 onClick={(e) => {
                   if (e.target === e.currentTarget) resetForm();
                 }}
@@ -650,12 +657,12 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                   </h3>
                   
                   <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Smart Input for Items */}
-                    {useSmartInput ? (
+                    {/* Smart Input for Ingredients */}
+                    {activeTab === 'ingredients' && useSmartInput ? (
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <label className="text-sm font-bold text-m3-on-surface-variant">
-                            {activeTab === 'ingredients' ? 'Ingredient' : 'Supply'} *
+                            Ingredient *
                           </label>
                           <button
                             type="button"
@@ -668,7 +675,7 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                         <input
                           autoFocus
                           type="text"
-                          placeholder={activeTab === 'ingredients' ? 'e.g. 1 bottle olive oil' : 'e.g. 6 rolls paper towels'}
+                          placeholder="e.g. 1 bottle olive oil"
                           value={smartInput}
                           onChange={(e) => setSmartInput(e.target.value)}
                           onBlur={handleSmartInputParse}
@@ -677,7 +684,7 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                           required
                         />
                         <p className="text-xs text-m3-on-surface-variant/60 mt-1">
-                          Type {activeTab === 'ingredients' ? 'ingredient' : 'supply'} with quantity & unit (e.g. "{activeTab === 'ingredients' ? '1 bottle olive oil' : '6 rolls paper towels'}"). Press Enter or click away to parse.
+                          Type ingredient with quantity & unit (e.g. "1 bottle olive oil"). Press Enter or click away to parse.
                         </p>
                         
                         {/* Show parsed values */}
@@ -709,13 +716,15 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                             <label className="text-sm font-bold text-m3-on-surface-variant">
                               Name *
                             </label>
-                            <button
-                              type="button"
-                              onClick={toggleInputMode}
-                              className="text-xs text-m3-primary font-bold hover:text-m3-primary/80"
-                            >
-                              Smart Input
-                            </button>
+                            {activeTab === 'ingredients' && (
+                              <button
+                                type="button"
+                                onClick={toggleInputMode}
+                                className="text-xs text-m3-primary font-bold hover:text-m3-primary/80"
+                              >
+                                Smart Input
+                              </button>
+                            )}
                           </div>
                           <input
                             autoFocus={!useSmartInput}
@@ -807,14 +816,16 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                       <button
                         type="button"
                         onClick={resetForm}
-                        className="flex-[0.4] py-2.5 px-6 border border-m3-outline text-m3-primary rounded-[20px] font-medium hover:bg-m3-primary/8 transition-all"
+                        className="flex-1 px-6 py-3 bg-m3-surface-variant/20 text-m3-on-surface-variant rounded-2xl font-bold hover:bg-m3-surface-variant/30 transition-all flex items-center justify-center gap-2"
                       >
+                        <X size={18} />
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="flex-[0.6] py-2.5 px-6 bg-m3-primary text-m3-on-primary rounded-[20px] font-medium hover:bg-m3-primary/90 shadow-sm hover:shadow-md transition-all"
+                        className="flex-1 px-6 py-3 bg-m3-primary text-m3-on-primary rounded-2xl font-bold hover:bg-m3-primary/90 shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
                       >
+                        <Check size={18} />
                         {editingItem ? 'Update' : 'Add'}
                       </button>
                     </div>
@@ -822,6 +833,22 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                 </motion.div>
               </motion.div>
             )}          </AnimatePresence>
+
+          {/* Floating Action Button - Only for supplies */}
+          {activeTab === 'supplies' && (
+            <div className="fixed bottom-10 right-10 z-40">
+              <button 
+                onClick={() => {
+                  setUseSmartInput(false); // Use individual fields for supplies
+                  setIsAddingItem(true);
+                }}
+                className="w-16 h-16 bg-m3-primary text-m3-on-primary rounded-[24px] shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                title="Add Supply"
+              >
+                <Plus size={28} />
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
@@ -878,47 +905,31 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                   <label className="block text-sm font-bold text-m3-on-surface-variant mb-2">
                     Filter by Location
                   </label>
-                  <div className="relative location-dropdown">
+                  <div className="space-y-2">
                     <button
-                      onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
-                      className="flex items-center justify-between w-full px-4 py-3 bg-m3-surface-variant/20 hover:bg-m3-surface-variant/30 border border-m3-outline/20 rounded-2xl transition-all text-sm font-medium text-m3-on-surface"
+                      onClick={() => handleLocationFilterSelect('all')}
+                      className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
+                        locationFilter === 'all'
+                          ? 'bg-m3-primary/10 text-m3-primary border border-m3-primary/20'
+                          : 'bg-m3-surface-variant/20 text-m3-on-surface hover:bg-m3-surface-variant/30 border border-m3-outline/20'
+                      }`}
                     >
-                      <span>
-                        {locationFilter === 'all' ? 'All Locations' : locationFilter}
-                      </span>
-                      <ChevronDown size={16} className={`text-m3-on-surface-variant transition-transform ${isLocationDropdownOpen ? 'rotate-180' : ''}`} />
+                      All Locations
                     </button>
                     
-                    {isLocationDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-m3-surface border border-m3-outline/10 rounded-2xl shadow-xl z-10 overflow-hidden">
-                        <button
-                          onClick={() => {
-                            handleLocationFilterSelect('all');
-                            setIsLocationDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 hover:bg-m3-surface-variant/20 transition-all text-sm font-medium ${
-                            locationFilter === 'all' ? 'bg-m3-primary/5 text-m3-primary' : 'text-m3-on-surface'
-                          }`}
-                        >
-                          All Locations
-                        </button>
-                        
-                        {locationOptions[activeTab as keyof typeof locationOptions].map((location) => (
-                          <button
-                            key={location}
-                            onClick={() => {
-                              handleLocationFilterSelect(location);
-                              setIsLocationDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-3 hover:bg-m3-surface-variant/20 transition-all text-sm font-medium ${
-                              locationFilter === location ? 'bg-m3-primary/5 text-m3-primary' : 'text-m3-on-surface'
-                            }`}
-                          >
-                            {location}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {locationOptions[activeTab as keyof typeof locationOptions].map((location) => (
+                      <button
+                        key={location}
+                        onClick={() => handleLocationFilterSelect(location)}
+                        className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
+                          locationFilter === location
+                            ? 'bg-m3-primary/10 text-m3-primary border border-m3-primary/20'
+                            : 'bg-m3-surface-variant/20 text-m3-on-surface hover:bg-m3-surface-variant/30 border border-m3-outline/20'
+                        }`}
+                      >
+                        {location}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -955,7 +966,10 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
             className="fixed inset-0 bg-m3-surface z-[100] flex flex-col overflow-hidden"
           >
             <div className="p-4 lg:p-6 border-b border-m3-outline/10 flex items-center justify-between bg-m3-surface">
-              <div className="flex items-center">
+              <div className="flex items-center gap-4">
+                <span className="text-2xl">
+                  {expandedLocation === 'Refrigerator' ? '🧊' : expandedLocation === 'Freezer' ? '❄️' : '🏠'}
+                </span>
                 <h2 className="text-2xl font-black text-m3-on-surface">
                   {expandedLocation}
                 </h2>
@@ -1024,9 +1038,21 @@ export const InventoryPage = ({ onMenuClick }: InventoryPageProps) => {
                     ))
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
-                      <p className="text-m3-on-surface-variant/60 text-sm font-medium">
+                      <div className="w-24 h-24 bg-m3-surface-variant/20 text-m3-on-surface-variant/30 rounded-full flex items-center justify-center mb-6">
+                        <Apple size={32} />
+                      </div>
+                      <h3 className="text-xl font-bold text-m3-on-surface mb-3">
                         No ingredients in {expandedLocation.toLowerCase()}
-                      </p>
+                      </h3>
+                      <button
+                        onClick={() => {
+                          handleCollapse();
+                          startAddWithLocation(expandedLocation);
+                        }}
+                        className="px-6 py-3 bg-m3-primary text-m3-on-primary rounded-2xl font-bold hover:bg-m3-primary/90 shadow-md transition-all"
+                      >
+                        Add your first item
+                      </button>
                     </div>
                   );
                 })()}

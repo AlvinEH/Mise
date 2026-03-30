@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   collection, 
   addDoc, 
@@ -13,9 +13,7 @@ import {
   Plus, 
   Check,
   Scissors,
-  Loader2,
-  Globe,
-  Edit3
+  Loader2
 } from 'lucide-react';
 import { motion, Reorder } from 'motion/react';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -35,7 +33,9 @@ interface AddRecipePageProps {
 
 export const AddRecipePage: React.FC<AddRecipePageProps> = ({ user, onMenuClick }) => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'manual' | 'url'>('manual');
+  const [searchParams] = useSearchParams();
+  const initialMode = (searchParams.get('mode') as 'manual' | 'url') || 'manual';
+  const [mode, setMode] = useState<'manual' | 'url'>(initialMode);
   const [urlInput, setUrlInput] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [form, setForm] = useState<{
@@ -164,42 +164,15 @@ export const AddRecipePage: React.FC<AddRecipePageProps> = ({ user, onMenuClick 
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate('/')}
-              className="p-3 bg-m3-surface-variant/20 hover:bg-m3-surface-variant/30 text-m3-on-surface rounded-full transition-colors flex items-center gap-2 pr-5"
-              title="Back to Library"
+              onClick={() => navigate('/recipes')}
+              className="p-3 bg-m3-surface-variant/20 hover:bg-m3-surface-variant/30 text-m3-on-surface rounded-full transition-colors"
+              title="Back to Recipes"
             >
               <ArrowLeft size={24} />
-              <span className="font-bold text-sm">Library</span>
             </button>
-            <h1 className="text-2xl font-black tracking-tight text-m3-on-surface">Add New Recipe</h1>
-          </div>
-          
-          {/* Mode Toggle */}
-          <div className="flex items-center gap-2 bg-m3-surface-variant/20 p-1 rounded-[20px]">
-            <button
-              type="button"
-              onClick={() => setMode('manual')}
-              className={`px-4 py-2 rounded-[16px] text-sm font-bold transition-all ${
-                mode === 'manual'
-                  ? 'bg-m3-primary text-m3-on-primary shadow-md'
-                  : 'text-m3-on-surface-variant hover:bg-m3-surface-variant/30'
-              }`}
-            >
-              <Edit3 size={16} className="inline mr-2" />
-              Manual
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('url')}
-              className={`px-4 py-2 rounded-[16px] text-sm font-bold transition-all ${
-                mode === 'url'
-                  ? 'bg-m3-primary text-m3-on-primary shadow-md'
-                  : 'text-m3-on-surface-variant hover:bg-m3-surface-variant/30'
-              }`}
-            >
-              <Globe size={16} className="inline mr-2" />
-              From URL
-            </button>
+            <h1 className="text-2xl font-black tracking-tight text-m3-on-surface">
+              {mode === 'url' ? 'Add from URL' : 'Add New Recipe'}
+            </h1>
           </div>
         </div>
       </header>
@@ -347,21 +320,20 @@ export const AddRecipePage: React.FC<AddRecipePageProps> = ({ user, onMenuClick 
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-m3-outline/10">
+            <div className="flex gap-4 pt-8 border-t border-m3-outline/10">
               <button 
                 type="button"
-                onClick={() => navigate('/')}
-                className="flex-1 py-5 px-8 border-2 border-m3-outline text-m3-on-surface rounded-[24px] font-black hover:bg-m3-surface-variant/30 transition-all text-lg"
+                onClick={() => navigate('/recipes')}
+                className="flex-[0.4] py-2.5 px-6 border border-m3-outline text-m3-primary rounded-[20px] font-medium hover:bg-m3-primary/8 transition-all"
                 disabled={isSaving}
               >
-                Discard Changes
+                Cancel
               </button>
               <button 
                 type="submit"
-                className="flex-1 py-5 px-8 bg-m3-primary text-m3-on-primary rounded-[24px] font-black hover:bg-m3-primary/90 transition-all shadow-xl hover:shadow-2xl text-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-[0.6] py-2.5 px-6 bg-m3-primary text-m3-on-primary rounded-[20px] font-medium hover:bg-m3-primary/90 transition-all shadow-sm hover:shadow-md flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSaving}
               >
-                <Check size={24} />
                 {isSaving ? 'Creating Recipe...' : 'Create Recipe'}
               </button>
             </div>

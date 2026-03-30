@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Edit2, Trash2, Clock } from 'lucide-react';
@@ -10,7 +11,7 @@ interface RecipeCardProps {
   onEdit: (e: React.MouseEvent) => void;
 }
 
-export const RecipeCard = ({ recipe, onDelete, onEdit }: RecipeCardProps) => {
+export const RecipeCard = memo(({ recipe, onDelete, onEdit }: RecipeCardProps) => {
   const navigate = useNavigate();
   
   return (
@@ -76,4 +77,4 @@ export const RecipeCard = ({ recipe, onDelete, onEdit }: RecipeCardProps) => {
       </div>
     </motion.div>
   );
-};
+});

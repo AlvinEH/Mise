@@ -17,6 +17,25 @@ View your app in AI Studio: https://ai.studio/apps/440135db-da11-4166-aee8-bfb9d
 2. Run the app:
    `npm run dev`
 
+## GitHub Pages Deployment
+
+This project is configured for GitHub Pages deployment with automated CI/CD.
+
+### Automatic Deployment
+- Pushes to `main` or `master` branch automatically trigger deployment
+- GitHub Actions builds and deploys to GitHub Pages
+- Live site available at: `https://[username].github.io/Mise/`
+
+### Manual Deployment
+```bash
+npm run deploy
+```
+
+### Setup Requirements
+1. Enable GitHub Pages in your repository settings
+2. Set source to "GitHub Actions"
+3. Ensure you have the necessary repository permissions
+
 ## Using Recipe URL Extraction
 
 To use the AI-powered recipe extraction feature:

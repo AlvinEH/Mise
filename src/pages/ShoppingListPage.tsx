@@ -208,49 +208,66 @@ export const ShoppingListPage = ({ onMenuClick, user }: ShoppingListPageProps) =
           <AnimatePresence>
             {isAddingStore && (
               <motion.div 
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="mb-12 bg-m3-surface-variant/10 p-6 rounded-[32px] border border-m3-outline/10"
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 180, marginBottom: 48 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={{
+                  duration: 0.4,
+                  ease: [0.4, 0.0, 0.2, 1]
+                }}
+                className="bg-m3-surface-variant/10 rounded-[32px] border border-m3-outline/10 overflow-hidden"
               >
-                <form onSubmit={handleAddStore} className="flex gap-4">
+                <div className="p-6 h-full">
+                <form onSubmit={handleAddStore} className="space-y-4">
                   <input 
                     autoFocus
                     type="text" 
-                    placeholder="Enter store name (e.g. Whole Foods, Costco)"
+                    placeholder="Enter store name"
                     value={newStoreName}
                     onChange={e => setNewStoreName(e.target.value)}
                     autoCapitalize="sentences"
-                    className="flex-1 px-6 py-4 bg-m3-surface border border-m3-outline/20 rounded-2xl outline-none focus:border-m3-primary font-bold"
+                    className="w-full px-6 py-4 bg-m3-surface border border-m3-outline/20 rounded-2xl outline-none focus:border-m3-primary font-bold"
                   />
                   <div className="flex gap-2">
                     <button 
                       type="button"
                       onClick={() => setIsAddingStore(false)}
-                      className="px-6 py-4 bg-m3-surface-variant/20 text-m3-on-surface-variant rounded-2xl font-bold hover:bg-m3-surface-variant/30"
+                      className="flex-[0.4] py-2.5 px-6 border border-m3-outline text-m3-primary rounded-[20px] font-medium hover:bg-m3-primary/8 transition-all"
                     >
                       Cancel
                     </button>
                     <button 
                       type="submit"
-                      className="px-6 py-4 bg-m3-primary text-m3-on-primary rounded-2xl font-bold hover:bg-m3-primary/90 shadow-md"
+                      className="flex-[0.6] py-2.5 px-6 bg-m3-primary text-m3-on-primary rounded-[20px] font-medium hover:bg-m3-primary/90 shadow-sm hover:shadow-md transition-all"
                     >
-                      Create List
+                      Create Store
                     </button>
                   </div>
                 </form>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
 
           {storeLists.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-8">
+            <motion.div 
+              layout
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-8"
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
               {storeLists.map((list, index) => (
                 <motion.div
                   key={list.id}
+                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  transition={{ 
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 30,
+                    delay: index * 0.05,
+                    layout: { duration: 0.3, ease: "easeInOut" }
+                  }}
                   whileHover={{ y: -4, scale: 1.02 }}
                   whileTap={{ y: -8, scale: 0.98 }}
                 >
@@ -267,7 +284,7 @@ export const ShoppingListPage = ({ onMenuClick, user }: ShoppingListPageProps) =
                 />
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           ) : (
             <div className="text-center py-32 bg-m3-surface-variant/10 rounded-[48px] border-2 border-dashed border-m3-outline/20">
               <h3 className="text-2xl font-bold text-m3-on-surface mb-2">No shopping lists yet</h3>
